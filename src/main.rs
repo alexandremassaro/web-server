@@ -1,30 +1,34 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpServer};
+use dotenv::dotenv;
+use std::env;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
-
-#[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    println!("echo");
-    println!("{req_body}");
-    HttpResponse::Ok().body(req_body)
-}
-
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
-}
+mod models;
+mod routes;
+mod db;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+    let server_address = env::var("CHAT_SERVER_ADDRESS").expect("CHAT_SERVER_ADDRESS is not set!");
+    let server_port : u16 = env::var("CHAT_SERVER_PORT").expect("CHAT_SERVER_PORT is not set!").parse().expect("CHAT_SERVER_PORT must be an integer!");
+
+    let server_add_show = match server_address.as_str() {
+        "0.0.0.0" => "localhost",
+        "127.0.0.1" => "localhost",
+        _ => &server_address
+    };
+
+    println!("Chat server is running on http://{}:{}", server_add_show, server_port);
+
     HttpServer::new(|| {
         App::new()
-            .service(hello)
-            .service(echo)
-            .route("/hey", web::get().to(manual_hello))
+            .service(routes::index)
+            .service(routes::chat)
+            // .service(web::scope("/app")
+            //     .route("/index.html", web::get().to(index)),)
+            // .route("/hey", web::get().to(manual_hello))
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((server_address, server_port))?
     .run()
     .await
 }
